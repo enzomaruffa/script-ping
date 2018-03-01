@@ -1,4 +1,5 @@
-# A lib de multiping funciona para pingar vários endereços, mas es
+# -*- coding: utf-8 -*-
+# A lib de multiping funciona para pingar vários endereços, mas esse programa funciona com apenas um
 
 
 from multiping import MultiPing
@@ -24,11 +25,19 @@ def write(file, result):
 	csv_string = result.host + ";" + str(format(result.ping, '.6f')) + ";" + str(result.date) + ";" + str(result.level) + "\n"
 	file.write(csv_string)
 
+def check_last_tweet():
+	now = datetime.datetime.now()
+	if last_tweet == None or (last_tweet - now).total_minutes() >= 5:
+		return True
+	return False
+
 # -------------------------------------------
 
 shitty_ping = False;
 ping_address = "google.com"
 ping_delay = 0.5
+bad_pings = 0 # Guarda os pings ruins desde o último tweet
+last_tweet = None # Data do último tweet
 
 while True:
 	#Se for um ping ruim, escreve que merda
@@ -66,6 +75,13 @@ while True:
 				result = Result(addr, date, rtt, 3)
 				result.display()	
 				write(file, result)
+				
+				# Controle dos pings ruins e twitta caso ruim.
+				bad_pings += 1 
+				if check_last_tweet():
+					#tweet(result, bad_pings)
+					bad_pings = 0
+
 				shitty_ping = True
 
 			#Ping maior que 100
@@ -73,6 +89,7 @@ while True:
 				result = Result(addr, date, rtt, 2)
 				result.display()
 				write(file, result)
+				bad_pings += 1
 				shitty_ping = True
 
 			#Ping maior que 50
