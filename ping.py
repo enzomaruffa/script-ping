@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
-# A lib de multiping funciona para pingar vários endereços, mas esse programa funciona com apenas um
+# Multiping lib supports more than one IP at once, but this script uses only one.
 
 
 from multiping import MultiPing
+import twitter_interface
 import time
 import datetime
+import math
 
 # -------------------------------------------
-# Classe de resultado
+# Result class
 class Result:
 	
 	def __init__(self, host, date, ping, level):
@@ -17,96 +19,94 @@ class Result:
 		self.level = level
 
 	def display(self):
-		print ("Pinging ", self.host, ". Ping is", format(self.ping, '.6f'), "s at ", self.date, ". Threat level: ", self.level) 
+		print ("Pinging", self.host, ". Ping is", format(self.ping, '.6f'), "s at", self.date, ". Threat level:", self.level) 
 
 
-# Função para escrever um result em um arquivo
+# Write result in file
 def write(file, result):
 	csv_string = result.host + ";" + str(format(result.ping, '.6f')) + ";" + str(result.date) + ";" + str(result.level) + "\n"
 	file.write(csv_string)
 
-def check_last_tweet():
-	now = datetime.datetime.now()
-	if last_tweet == None or (last_tweet - now).total_minutes() >= 5:
-		return True
-	return False
 
 # -------------------------------------------
-
-shitty_ping = False;
+# 'IMPORTANT' GLOBAL VARS
 ping_address = "google.com"
 ping_delay = 0.5
-bad_pings = 0 # Guarda os pings ruins desde o último tweet
-last_tweet = None # Data do último tweet
+
+# ISDOWN VARS, used to check if internet is down and calculate how long it has been down.
+is_down = False
+last_down = datetime.datetime.now()
+
+# COUNTERS
+bad_pings = 0 # Counts how many bad pings (>50) since last tweet.
 
 while True:
-	#Se for um ping ruim, escreve que merda
-	if shitty_ping:
-		print("Well, fuck. That's a shitty ping.")
-		shitty_ping = False
-
-	#Editar aqui para adicionar mais IPs NÃO RECOMENDADO
 	mp = MultiPing([ping_address])
 	mp.send()
+
+	# Responses has ping responses.
 	responses, no_responses = mp.receive(1)
 	
 	date = datetime.datetime.now()
 
+	# Basically if internet is down
 	if no_responses:
-		print ("NETWORK DOWN GOING DARK BRB GONNA HIDE FOR 5 SECONDS")
-		# Escreve com ping 0 quando cai
-		result = Result(no_responses[0], date, 0, 5)
+		print ("Could not find IP. Maybe you have no connection?")
+		# Write ping as -1 if down. Threat level = 9.
+		result = Result(no_responses[0], date, -1, 9)
 		
-		# Escreve caso não receba
+		# Write even if internet is down
 		file = open("allping.txt", "a") 
 		write(file, result)
 		file.close();
-		
+
+		# Updates down status
+		if not is_down:
+			is_down = True
+			last_down = datetime.datetime.now()
 		time.sleep(ping_delay)
 
 	else:
 		for addr, rtt in responses.items():
-			file = open("allping.txt", "a")
 		
-			
 			rtt = round(rtt, 6)
-			#Ping maior que 150
-			if rtt >= 0.15:
-				result = Result(addr, date, rtt, 3)
-				result.display()	
-				write(file, result)
+
+			if is_down:
+				is_down = False
+
+				# Gets current time and calculates downtime
+				now = datetime.datetime.now()
+				downtime = (now - last_down).total_seconds() 
 				
-				# Controle dos pings ruins e twitta caso ruim.
+				# Write to file
+				internet_file = open("no_internet_time.txt", "a")				
+				internet_file.write(now,";", downtime, "\n")
+				internet_file.close()
+
+				twitter_interface.tweet_downtime(last_down, downtime)
+
+			file = open("allping.txt", "a")
+
+			bin_limit = 50 # Defines how "large" is a threat level
+			threat_level = math.floor(rtt/50)
+			
+			result = Result(addr, date, rtt, threat_level)
+			result.display()
+			
+			# If ping is higher than 100ms
+			if (result.ping >= 0.1):
 				bad_pings += 1 
-				if check_last_tweet():
-					#tweet(result, bad_pings)
+				# If last tweet was before 5 minutes ago, then tweet
+				if twitter_interface.check_last_tweet():
+					twitter_interface.tweet_bad_ping(result, bad_pings)
 					bad_pings = 0
 
-				shitty_ping = True
-
-			#Ping maior que 100
-			elif rtt >= 0.100:
-				result = Result(addr, date, rtt, 2)
-				result.display()
-				write(file, result)
-				bad_pings += 1
-				shitty_ping = True
-
-			#Ping maior que 50
-			elif rtt >= 0.05:
-				result = Result(addr, date, rtt, 1)
-				result.display()
-				write(file, result)
-
-			else:
-				result = Result(addr, date, rtt, 0)
-				result.display()
-				write(file, result)
-
+			write(file, result)
 			file.close();
 		
 	#Default delay entre pings	
 	time.sleep(ping_delay)
+
 
 
 

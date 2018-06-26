@@ -4,5 +4,6 @@ script que pinga google.com, avisando a vivo caso fique ruim
 ---
 
 Dependências:
-  - API do Twitter
+  - [Twitter Wrapper](https://github.com/bear/python-twitter)
   - [multiping](https://github.com/romana/multi-ping/)
+  - [python-dotenv](pip install -U python-dotenv)
