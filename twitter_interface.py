@@ -51,7 +51,7 @@ def tweet(message):
 	api.PostUpdate(message)
 
 def tweet_bad_ping(result, bad_pings):
-	message = "Poxa " + VIVO_USERNAME + "! Meu ping para o google (" +  str(result.host) + ") está em " + str(result.ping) + ". Isso aconteceu nas últimas " + str(bad_pings) + " tentativas de pingar. Arruma aí, pô ;-(."
+	message = "Poxa " + VIVO_USERNAME + "! Meu ping para o google (" +  str(result.host) + ") está em " + str(result.ping) + "ms. Isso aconteceu nas últimas " + str(bad_pings) + " tentativas de pingar. Arruma aí, pô ;-(."
 	tweet(message)
 
 def tweet_downtime(last_down, downtime):

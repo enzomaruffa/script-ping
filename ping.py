@@ -3,6 +3,7 @@
 
 
 from multiping import MultiPing
+from multiping import multi_ping
 import twitter_interface
 import time
 import datetime
@@ -19,7 +20,7 @@ class Result:
 		self.level = level
 
 	def display(self):
-		print ("Pinging", self.host, ". Ping is", format(self.ping, '.6f'), "s at", self.date, ". Threat level:", self.level) 
+		print ("Pinging", self.host, ". Ping is", format(self.ping, '.6f'), "ms at", self.date, ". Threat level:", self.level) 
 
 
 # Write result in file
@@ -41,11 +42,7 @@ last_down = datetime.datetime.now()
 bad_pings = 0 # Counts how many bad pings (>50) since last tweet.
 
 while True:
-	mp = MultiPing([ping_address])
-	mp.send()
-
-	# Responses has ping responses.
-	responses, no_responses = mp.receive(1)
+	responses, no_responses = multi_ping([ping_address], timeout=1, retry=2,ignore_lookup_errors=True)
 	
 	date = datetime.datetime.now()
 
@@ -80,7 +77,7 @@ while True:
 				
 				# Write to file
 				internet_file = open("no_internet_time.txt", "a")				
-				internet_file.write(now,";", downtime, "\n")
+				internet_file.write(str(now) + ";" + str(downtime) + "\n")
 				internet_file.close()
 
 				twitter_interface.tweet_downtime(last_down, downtime)
@@ -88,13 +85,13 @@ while True:
 			file = open("allping.txt", "a")
 
 			bin_limit = 50 # Defines how "large" is a threat level
-			threat_level = math.floor(rtt/50)
+			threat_level = math.floor((rtt*1000)/50)
 			
-			result = Result(addr, date, rtt, threat_level)
+			result = Result(addr, date, rtt*1000, threat_level)
 			result.display()
 			
 			# If ping is higher than 100ms
-			if (result.ping >= 0.1):
+			if (result.ping >= 100):
 				bad_pings += 1 
 				# If last tweet was before 5 minutes ago, then tweet
 				if twitter_interface.check_last_tweet():
